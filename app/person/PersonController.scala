@@ -8,11 +8,12 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import Person._
 import scala.concurrent.{ ExecutionContext, Future }
+import play.api.i18n.I18nSupport
 
 class PersonController @Inject()(
   personRepository: PersonRepository,
   val controllerComponents: ControllerComponents
-  )(implicit ec: ExecutionContext) extends BaseController {
+)(implicit ec: ExecutionContext) extends BaseController with I18nSupport {
 
   private val logger = Logger(getClass)
 
@@ -26,18 +27,6 @@ class PersonController @Inject()(
     }.recover {
       case _ => InternalServerError(Json.toJson(Map("message" -> "Internal error")))
     }
-    // form.bindFromRequest.fold(
-    //   formWithErrors => {
-    //     BadRequest(formWithErrors.errors.toString)
-    //   },
-    //   personData => {
-    //     personRepository.get(id).map { maybeData =>
-    //       maybeData.fold(BadRequest(formWithErrors.errors.toString)) {
-    //         Ok(Json.toJson(personData))
-    //       }
-    //     }
-    //   }
-    // )
   }
 
   def list(): Action[AnyContent] = Action.async { implicit request =>
@@ -49,8 +38,17 @@ class PersonController @Inject()(
   }
 
   def create(): Action[AnyContent] = Action.async { implicit request =>
-    Future {
-      Ok(Json.toJson(Map("lala" -> "lala")))
-    }
+    form.bindFromRequest.fold(
+      formWithErrors => {
+        Future.successful(BadRequest(formWithErrors.errorsAsJson))
+      },
+      personData => {
+        personRepository.create(personData).map { newId =>
+          Ok(Json.obj("id" -> newId))
+        }.recover {
+          case _ => InternalServerError(Json.toJson(Map("message" -> "Internal error")))
+        }
+      }
+    )
   }
 }

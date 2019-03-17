@@ -10,6 +10,7 @@ import org.scalatest._
 import scala.concurrent._
 import person.Person._
 import org.mockito.Mockito._
+import org.mockito.Matchers
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
@@ -41,6 +42,7 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
       val response = controller.get(id).apply(FakeRequest(GET, s"/people/$id/"))
 
       status(response) mustBe BAD_REQUEST
+      contentType(response) mustBe Some("application/json")
     }
 
     "return an internal server error when the repository fails to fetch the person" in {
@@ -86,6 +88,53 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
       val response = controller.list().apply(FakeRequest(GET, s"/people/"))
 
       status(response) mustBe INTERNAL_SERVER_ERROR
+    }
+  }
+
+  "PersonController create" should {
+    "return ok when person data is correct" in {
+      val person = PersonData(None, "Test person 1")
+
+      val personRepository = mock[PersonRepository]
+      when(personRepository.create(person)) thenReturn Future(1L)
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val request = FakeRequest(POST, s"/people/").withJsonBody(Json.obj(
+        "name" -> "Test person 1"
+      ))
+      val response = controller.create().apply(request)
+      val json = Json.parse(contentAsString(response))
+      val expectedJson = Json.obj("id" -> 1L)
+
+      status(response) mustBe OK
+      contentType(response) mustBe Some("application/json")
+      json mustBe expectedJson
+    }
+
+    "return a bad request error when the name is empty" in {
+      val controller = new PersonController(mock[PersonRepository], stubControllerComponents())
+      val request = FakeRequest(POST, s"/people/").withJsonBody(Json.obj(
+        "name" -> ""
+      ))
+      val response = controller.create().apply(request)
+      println(contentAsString(response))
+      status(response) mustBe BAD_REQUEST
+      contentType(response) mustBe Some("application/json")
+    }
+
+    "return an internal server error when the repository fails to create the person" in {
+      val person = PersonData(None, "Test person 1")
+      val personRepository = mock[PersonRepository]
+      when(personRepository.create(person)) thenReturn Future.failed(new Exception("test"))
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val request = FakeRequest(POST, s"/people/").withJsonBody(Json.obj(
+        "name" -> "Test person 1"
+      ))
+      val response = controller.create().apply(request)
+
+      status(response) mustBe INTERNAL_SERVER_ERROR
+      contentType(response) mustBe Some("application/json")
     }
   }
 }
