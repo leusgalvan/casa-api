@@ -1,8 +1,4 @@
-GET        /                       controllers.HomeController.index
 GET        /people                 person.PersonController.list
 GET        /people/:id             person.PersonController.get(id: Long)
 POST       /people                 person.PersonController.create
 DELETE     /people/:id             person.PersonController.delete(id: Long)
-
-# Map static resources from the /public folder to the /assets URL path
-GET        /assets/*file        controllers.Assets.at(path="/public", file)
