@@ -21,11 +21,11 @@ class PersonController @Inject()(
 
   def get(id: Long): Action[AnyContent] = Action.async { implicit request =>
     personRepository.get(id).map { maybeData =>
-      maybeData.fold(BadRequest(Json.toJson(Map("message" -> s"No person found for id: $id")))) {
+      maybeData.fold(BadRequest(Json.obj("message" -> s"No person found for id: $id"))) {
         personData => Ok(Json.toJson(personData))
       }
     }.recover {
-      case _ => InternalServerError(Json.toJson(Map("message" -> "Internal error")))
+      case _ => InternalServerError(Json.obj("message" -> "Internal error"))
     }
   }
 
@@ -33,7 +33,7 @@ class PersonController @Inject()(
     personRepository.list().map { people =>
       Ok(Json.toJson(people))
     }.recover {
-      case _ => InternalServerError(Json.toJson(Map("message" -> "Internal error")))
+      case _ => InternalServerError(Json.obj("message" -> "Internal error"))
     }
   }
 
@@ -46,9 +46,20 @@ class PersonController @Inject()(
         personRepository.create(personData).map { newId =>
           Ok(Json.obj("id" -> newId))
         }.recover {
-          case _ => InternalServerError(Json.toJson(Map("message" -> "Internal error")))
+          case _ => InternalServerError(Json.obj("message" -> "Internal error"))
         }
       }
     )
+  }
+
+  def delete(id: Long): Action[AnyContent] = Action.async { implicit request =>
+    personRepository.delete(id).map { found =>
+      if(found)
+        Ok(Json.obj("message" -> "Person deleted successfully"))
+      else
+        BadRequest(Json.obj("message" -> s"No person found for id: $id"))
+    }.recover {
+      case _ => InternalServerError(Json.obj("message" -> "Internal error"))
+    }
   }
 }

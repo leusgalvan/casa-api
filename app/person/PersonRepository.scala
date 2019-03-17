@@ -15,6 +15,8 @@ trait PersonRepository {
   def list()(implicit mc: MarkerContext): Future[Iterable[PersonData]]
 
   def get(id: Long)(implicit mc: MarkerContext): Future[Option[PersonData]]
+
+  def delete(id: Long)(implicit mc: MarkerContext): Future[Boolean]
 }
 
 @Singleton
@@ -56,4 +58,9 @@ class PersonRepositoryImpl extends PersonRepository {
     }
   }
 
+  def delete(id: Long)(implicit mc: MarkerContext): Future[Boolean] = {
+    Future {
+      true
+    }
+  }
 }

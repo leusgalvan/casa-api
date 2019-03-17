@@ -137,4 +137,42 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
       contentType(response) mustBe Some("application/json")
     }
   }
+
+  "PersonController delete" should {
+    "return ok when a person with a given id exists" in {
+      val id = 1L
+      val personRepository = mock[PersonRepository]
+      when(personRepository.delete(id)) thenReturn Future(true)
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val response = controller.delete(id).apply(FakeRequest(DELETE, s"/people/$id/"))
+
+      status(response) mustBe OK
+      contentType(response) mustBe Some("application/json")
+    }
+
+    "return a bad request error when a person with a given id does not exist" in {
+      val id = 1L
+      val personRepository = mock[PersonRepository]
+      when(personRepository.delete(id)) thenReturn Future(false)
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val response = controller.delete(id).apply(FakeRequest(DELETE, s"/people/$id/"))
+
+      status(response) mustBe BAD_REQUEST
+      contentType(response) mustBe Some("application/json")
+    }
+
+    "return an internal server error when the repository fails to delete the person" in {
+      val id = 1L
+      val personRepository = mock[PersonRepository]
+      when(personRepository.delete(id)) thenReturn Future.failed(new Exception("test"))
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val response = controller.delete(id).apply(FakeRequest(DELETE, s"/people/$id/"))
+
+      status(response) mustBe INTERNAL_SERVER_ERROR
+      contentType(response) mustBe Some("application/json")
+    }
+  }
 }
