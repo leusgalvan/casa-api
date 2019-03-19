@@ -62,4 +62,23 @@ class PersonController @Inject()(
       case _ => InternalServerError(Json.obj("message" -> "Internal error"))
     }
   }
+
+  def update(id: Long): Action[AnyContent] = Action.async { implicit request =>
+    form.bindFromRequest().fold(
+      formWithErrors => {
+        Future.successful(BadRequest(formWithErrors.errorsAsJson))
+      },
+      personData => {
+        val personDataWithId = personData.copy(id = Some(id))
+        personRepository.update(personDataWithId).map { found =>
+          if(found)
+            Ok(Json.obj("message" -> "Person updated successfully"))
+          else
+            BadRequest(Json.obj("message" -> s"No person found for id: $id"))
+        }.recover {
+          case _ => InternalServerError(Json.obj("message" -> "Internal error"))
+        }
+      }
+    )
+  }
 }

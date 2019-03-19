@@ -1,11 +1,11 @@
 package person
 
 import javax.inject.{Inject, Singleton}
-
 import akka.actor.ActorSystem
 import play.api.libs.concurrent.CustomExecutionContext
 import play.api.{Logger, MarkerContext}
 import person.Person._
+
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import doobie._
@@ -13,6 +13,11 @@ import doobie.implicits._
 import cats._
 import cats.effect._
 import cats.implicits._
+import person.PersonRepository.EmptyIdException
+
+object PersonRepository {
+  case class EmptyIdException() extends Exception
+}
 
 trait PersonRepository {
   def create(data: PersonData)(implicit mc: MarkerContext): Future[Long]
@@ -22,6 +27,8 @@ trait PersonRepository {
   def get(id: Long)(implicit mc: MarkerContext): Future[Option[PersonData]]
 
   def delete(id: Long)(implicit mc: MarkerContext): Future[Boolean]
+
+  def update(data: PersonData)(implicit mc: MarkerContext): Future[Boolean]
 }
 
 @Singleton
@@ -65,6 +72,17 @@ class PersonRepositoryImpl @Inject()(transactor: Transactor[IO]) extends PersonR
       .run
       .transact(transactor)
       .unsafeRunSync
+    }.map(_ == 1)
+  }
+
+  override def update(data: PersonData)(implicit mc: MarkerContext): Future[Boolean] = {
+    Future {
+      if(data.id.isEmpty) throw new EmptyIdException
+      sql"update person set name = ${data.name} where id = ${data.id}"
+        .update
+        .run
+        .transact(transactor)
+        .unsafeRunSync
     }.map(_ == 1)
   }
 }

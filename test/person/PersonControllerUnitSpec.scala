@@ -7,10 +7,13 @@ import play.api.test.Helpers._
 import play.api.MarkerContext
 import play.api.libs.json._
 import org.scalatest._
+
 import scala.concurrent._
 import person.Person._
 import org.mockito.Mockito._
 import org.mockito.Matchers
+import person.PersonRepository.EmptyIdException
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
@@ -117,7 +120,6 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
         "name" -> ""
       ))
       val response = controller.create().apply(request)
-      println(contentAsString(response))
       status(response) mustBe BAD_REQUEST
       contentType(response) mustBe Some("application/json")
     }
@@ -170,6 +172,64 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
 
       val controller = new PersonController(personRepository, stubControllerComponents())
       val response = controller.delete(id).apply(FakeRequest(DELETE, s"/people/$id/"))
+
+      status(response) mustBe INTERNAL_SERVER_ERROR
+      contentType(response) mustBe Some("application/json")
+    }
+  }
+
+  "PersonController update" should {
+    "return ok when person to update exists" in {
+      val id = 1L
+      val person = PersonData(Some(id), "Test person 1")
+
+      val personRepository = mock[PersonRepository]
+      when(personRepository.update(person)) thenReturn Future(true)
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val request = FakeRequest(PUT, s"/people/$id").withJsonBody(Json.obj(
+        "name" -> "Test person 1"
+      ))
+      val response = controller.update(id).apply(request)
+
+      status(response) mustBe OK
+    }
+
+    "return a bad request error when the name is empty" in {
+      val id = 1L
+      val controller = new PersonController(mock[PersonRepository], stubControllerComponents())
+      val request = FakeRequest(PUT, s"/people/$id").withJsonBody(Json.obj(
+        "name" -> ""
+      ))
+      val response = controller.update(id).apply(request)
+      status(response) mustBe BAD_REQUEST
+      contentType(response) mustBe Some("application/json")
+    }
+
+    "return a bad request error when a person with a given id does not exist" in {
+      val id = 1L
+      val person = PersonData(Some(id), "Test person")
+      val personRepository = mock[PersonRepository]
+      when(personRepository.update(person)) thenReturn Future(false)
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val response = controller.update(id).apply(FakeRequest(PUT, s"/people/$id/"))
+
+      status(response) mustBe BAD_REQUEST
+      contentType(response) mustBe Some("application/json")
+    }
+
+    "return an internal server error when the repository fails to update the person" in {
+      val id = 1L
+      val person = PersonData(Some(id), "Test person 1")
+      val personRepository = mock[PersonRepository]
+      when(personRepository.update(person)) thenReturn Future.failed(EmptyIdException())
+
+      val controller = new PersonController(personRepository, stubControllerComponents())
+      val request = FakeRequest(PUT, s"/people/$id").withJsonBody(Json.obj(
+        "name" -> "Test person 1"
+      ))
+      val response = controller.update(id).apply(request)
 
       status(response) mustBe INTERNAL_SERVER_ERROR
       contentType(response) mustBe Some("application/json")

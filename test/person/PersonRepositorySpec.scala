@@ -6,14 +6,17 @@ import play.api.test.Helpers._
 import play.api.MarkerContext
 import play.api.libs.json._
 import org.scalatest._
+
 import scala.concurrent._
 import person.Person._
+
 import scala.concurrent.ExecutionContext.global
 import doobie._
 import doobie.implicits._
 import cats._
 import cats.effect._
 import cats.implicits._
+import person.PersonRepository.EmptyIdException
 
 class PersonRepositorySpec extends AsyncFlatSpec with BeforeAndAfterEach {
   implicit val cs = IO.contextShift(global)
@@ -24,6 +27,7 @@ class PersonRepositorySpec extends AsyncFlatSpec with BeforeAndAfterEach {
     "admin"
   )
   val personRepository = new PersonRepositoryImpl(transactor)
+
   val allPeople = Set(
     PersonData(Some(1L), "Leo"),
     PersonData(Some(2L), "Masi"),
@@ -31,6 +35,14 @@ class PersonRepositorySpec extends AsyncFlatSpec with BeforeAndAfterEach {
     PersonData(Some(4L), "Papu"),
     PersonData(Some(5L), "Nono")
   )
+  val allPeopleById = Map(
+    1L -> PersonData(Some(1L), "Leo"),
+    2L -> PersonData(Some(2L), "Masi"),
+    3L -> PersonData(Some(3L), "Ile"),
+    4L -> PersonData(Some(4L), "Papu"),
+    5L -> PersonData(Some(5L), "Nono")
+  )
+
   override def beforeEach() {
     val upd = sql"create table person(id serial primary key, name text not null)".update.run *>
       sql"insert into person(name) values ('Leo')".update.run *>
@@ -94,5 +106,30 @@ class PersonRepositorySpec extends AsyncFlatSpec with BeforeAndAfterEach {
       deleted <- personRepository.delete(id)
       people = sql"select id, name from person".query[PersonData].to[Set].transact(transactor).unsafeRunSync
     } yield assert(!deleted && people == allPeople)
+  }
+
+  "update" should "replace an existing person with the given person" in {
+    val newPersonData = PersonData(Some(1L), "Leus mejorado")
+    val oldPersonData = allPeopleById(1L)
+    for {
+      updated <- personRepository.update(newPersonData)
+      people = sql"select id, name from person".query[PersonData].to[Set].transact(transactor).unsafeRunSync
+      expectedPeople = allPeople - oldPersonData + newPersonData
+    } yield assert(updated && people == expectedPeople)
+  }
+
+  it should "leave the person table as it is and return false when no person with the given id exists" in {
+    val newPersonData = PersonData(Some(6L), "Leus mejorado")
+    for {
+      updated <- personRepository.update(newPersonData)
+      people = sql"select id, name from person".query[PersonData].to[Set].transact(transactor).unsafeRunSync
+    } yield assert(!updated && people == allPeople)
+  }
+
+  it should "fail when the given person has no id" in {
+    val newPersonData = PersonData(None, "Leus mejorado")
+    recoverToSucceededIf[EmptyIdException] {
+      personRepository.update(newPersonData)
+    }
   }
 }

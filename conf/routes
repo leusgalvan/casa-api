@@ -2,3 +2,4 @@ GET        /people                 person.PersonController.list
 GET        /people/:id             person.PersonController.get(id: Long)
 POST       /people                 person.PersonController.create
 DELETE     /people/:id             person.PersonController.delete(id: Long)
+PUT        /people/:id             person.PersonController.update(id: Long)
