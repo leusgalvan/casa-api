@@ -95,7 +95,7 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
   }
 
   "PersonController create" should {
-    "return ok when person data is correct" in {
+    "return the created person when person data is correct" in {
       val person = PersonData(None, "Test person 1")
 
       val personRepository = mock[PersonRepository]
@@ -107,7 +107,7 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
       ))
       val response = controller.create().apply(request)
       val json = Json.parse(contentAsString(response))
-      val expectedJson = Json.obj("id" -> 1L)
+      val expectedJson = Json.toJson(person.copy(id = Some(1L)))
 
       status(response) mustBe OK
       contentType(response) mustBe Some("application/json")
@@ -179,7 +179,7 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
   }
 
   "PersonController update" should {
-    "return ok when person to update exists" in {
+    "return the updated person when the person to update exists" in {
       val id = 1L
       val person = PersonData(Some(id), "Test person 1")
 
@@ -191,8 +191,11 @@ class PersonControllerUnitSpec extends PlaySpec with MockitoSugar {
         "name" -> "Test person 1"
       ))
       val response = controller.update(id).apply(request)
-
+      val json = Json.parse(contentAsString(response))
+      val expectedJson = Json.toJson(person)
       status(response) mustBe OK
+      contentType(response) mustBe Some("application/json")
+      json mustBe expectedJson
     }
 
     "return a bad request error when the name is empty" in {

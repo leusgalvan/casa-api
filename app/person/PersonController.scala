@@ -44,7 +44,7 @@ class PersonController @Inject()(
       },
       personData => {
         personRepository.create(personData).map { newId =>
-          Ok(Json.obj("id" -> newId))
+          Ok(Json.toJson(personData.copy(id = Some(newId))))
         }.recover {
           case _ => InternalServerError(Json.obj("message" -> "Internal error"))
         }
@@ -72,7 +72,7 @@ class PersonController @Inject()(
         val personDataWithId = personData.copy(id = Some(id))
         personRepository.update(personDataWithId).map { found =>
           if(found)
-            Ok(Json.obj("message" -> "Person updated successfully"))
+            Ok(Json.toJson(personDataWithId))
           else
             BadRequest(Json.obj("message" -> s"No person found for id: $id"))
         }.recover {
